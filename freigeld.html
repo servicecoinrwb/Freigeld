@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freigeld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:ital,wght@0,400;0,600;0,700;1,400&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<style>
+  /* ============================================================
+     Wörgl's scrip was a banknote you stuck a stamp on every month
+     to keep it valid. So this is a note: aged paper, engraver's
+     green, guilloche, and a stamp for every period a balance has
+     sat still.
+     The signature is the balance itself — it ticks DOWN while you
+     watch, because that is the entire argument.
+     ============================================================ */
+  :root{
+    --felt:#1d2420;
+    --felt-2:#252e29;
+    --paper:#e7dfc6;
+    --paper-2:#dcd2b4;
+    --ink:#24352c;
+    --engrave:#3d6152;
+    --stamp:#a33b30;
+    --gold:#9a7b3f;
+    --dim:rgba(231,223,198,.6);
+    --faint:rgba(231,223,198,.34);
+    --line:rgba(231,223,198,.13);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--felt);
+    background-image:radial-gradient(900px 420px at 50% -8%,rgba(61,97,82,.22),transparent 62%);
+    color:var(--paper);font-family:"Public Sans",system-ui,sans-serif;
+    font-size:15.5px;line-height:1.62;padding:26px 15px 80px;display:flex;justify-content:center}
+  .shell{width:100%;max-width:680px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:26px;flex-wrap:wrap}
+  .mark{font-family:"Zilla Slab",serif;font-weight:700;font-size:25px;letter-spacing:-.01em}
+  .mark i{font-style:italic;color:var(--gold)}
+  .net{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--faint);border:1px solid var(--line);padding:4px 10px}
+
+  .hero{margin-bottom:22px}
+  .kicker{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 11px}
+  h1{font-family:"Zilla Slab",serif;font-weight:700;font-size:clamp(30px,7vw,43px);line-height:1.08;
+    letter-spacing:-.02em;margin:0 0 10px}
+  h1 i{font-style:italic;color:var(--gold)}
+  .lede{font-size:16px;color:var(--dim);margin:0;max-width:55ch}
+
+  /* ---------- SIGNATURE: the note ---------- */
+  .note{position:relative;background:var(--paper);color:var(--ink);
+    background-image:
+      repeating-linear-gradient(58deg,rgba(61,97,82,.05) 0 1px,transparent 1px 7px),
+      repeating-linear-gradient(-58deg,rgba(61,97,82,.05) 0 1px,transparent 1px 7px);
+    border:1px solid #b9ab84;
+    box-shadow:0 20px 44px rgba(0,0,0,.46);margin:22px 0 13px}
+  .note::before{content:"";position:absolute;inset:7px;border:1.5px double var(--engrave);
+    opacity:.5;pointer-events:none}
+
+  .note-in{position:relative;padding:24px 26px 20px}
+  .note-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;
+    padding-bottom:13px;border-bottom:1.5px solid rgba(61,97,82,.35);margin-bottom:16px}
+  .issuer{font-family:"Zilla Slab",serif;font-weight:700;font-size:13px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--engrave);margin:0;line-height:1.5}
+  .issuer small{display:block;font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:9px;
+    letter-spacing:.09em;text-transform:none;color:rgba(36,53,44,.6);margin-top:4px}
+  .denom{text-align:right;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:rgba(36,53,44,.55);line-height:1.8}
+
+  .amount{font-family:"Zilla Slab",serif;font-weight:700;
+    font-size:clamp(38px,11vw,66px);line-height:1;letter-spacing:-.02em;color:var(--engrave);
+    margin:0;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .amount .frac{font-size:.44em;color:rgba(61,97,82,.6)}
+  .amount .unit{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:400;letter-spacing:.13em;
+    color:rgba(36,53,44,.55)}
+  .shrink{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--stamp);margin:8px 0 0}
+  .shrink.none{color:rgba(36,53,44,.5)}
+
+  /* the stamps — one per idle period, exactly as Wörgl worked */
+  .stamps{display:flex;gap:7px;flex-wrap:wrap;margin:17px 0 0;min-height:8px}
+  .stamp{width:38px;height:44px;position:relative;background:var(--stamp);
+    color:#f3e6d2;font-family:"IBM Plex Mono",monospace;font-size:7.5px;line-height:1.2;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .stamp::before,.stamp::after{content:"";position:absolute;left:0;right:0;height:4px;
+    background-image:radial-gradient(circle at 3px 0,transparent 2.4px,var(--paper) 2.4px);
+    background-size:6px 4px}
+  .stamp::before{top:-1px;transform:rotate(180deg)}
+  .stamp::after{bottom:-1px}
+  .stamp b{font-size:11px;font-weight:700}
+  .stamp.partial{opacity:.45}
+  .stamps-lab{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.13em;
+    text-transform:uppercase;color:rgba(36,53,44,.5);margin:16px 0 0}
+
+  .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(61,97,82,.25);
+    margin-top:18px;border:1px solid rgba(61,97,82,.25)}
+  .facts > div{background:rgba(255,255,255,.22);padding:10px 9px;text-align:center}
+  .facts dt{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(36,53,44,.55);margin:0 0 3px}
+  .facts dd{margin:0;font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--engrave)}
+
+  .serial{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;
+    color:rgba(36,53,44,.45);margin:15px 0 0;padding-top:11px;border-top:1px dashed rgba(61,97,82,.3);
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+  /* panels */
+  .panel{background:var(--felt-2);border:1px solid var(--line);padding:19px;margin-bottom:13px}
+  .panel h2{font-family:"Zilla Slab",serif;font-weight:600;font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+  .how{font-size:13.5px;color:var(--dim);margin:0 0 15px}
+  label{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--faint);margin:0 0 6px}
+  input{width:100%;font-family:"IBM Plex Mono",monospace;font-size:14px;padding:10px 11px;
+    border:1px solid var(--line);background:rgba(0,0,0,.26);color:var(--paper);margin-bottom:10px}
+  input:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+  input::placeholder{color:rgba(231,223,198,.25)}
+  button{font-family:"Public Sans",sans-serif;font-size:14.5px;font-weight:600;border:0;
+    padding:12px 18px;cursor:pointer;width:100%;background:var(--engrave);color:var(--paper);transition:filter .14s}
+  button:hover:not(:disabled){filter:brightness(1.18)}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  button:disabled{background:rgba(231,223,198,.09);color:var(--faint);cursor:not-allowed}
+  button.ghost{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 1px rgba(231,223,198,.22)}
+  button.ghost:hover:not(:disabled){background:rgba(231,223,198,.05)}
+  .why{font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1.65;color:var(--dim);margin:10px 0 0}
+  .why.warn{color:#e0917f}
+  .why.ok{color:#8fc7a8}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .quote{font-family:"IBM Plex Mono",monospace;font-size:11.5px;background:rgba(61,97,82,.18);
+    border-left:2px solid var(--engrave);padding:10px 12px;margin:0 0 11px;color:var(--dim)}
+  .quote b{color:var(--paper)}
+
+  .hist{border-left:2px solid var(--gold);padding:2px 0 2px 15px;margin:18px 0 0;
+    font-size:13px;color:var(--faint);line-height:1.75}
+  .hist b{color:var(--dim)}
+
+  .foot{font-family:"IBM Plex Mono",monospace;font-size:10px;line-height:1.8;color:var(--faint);
+    margin-top:22px;text-align:center}
+  .foot code{color:var(--gold)}
+  a{color:var(--gold)}
+  .hidden{display:none !important}
+  @media (max-width:560px){ .two{grid-template-columns:1fr} .facts{grid-template-columns:1fr}
+    .denom{text-align:left} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="mark">Frei<i>geld</i></div>
+    <div class="net" id="net">Arc Testnet</div>
+  </div>
+
+  <header class="hero">
+    <p class="kicker">Money that costs something to hold · testnet</p>
+    <h1>Every other token pays you <i>to do nothing</i>.</h1>
+    <p class="lede">This one charges you. A balance left alone shrinks, and what it loses goes to the commons. The only way to avoid the charge is to spend it — which was always the point.</p>
+  </header>
+
+  <!-- SIGNATURE: the note -->
+  <section class="note">
+    <div class="note-in">
+      <div class="note-top">
+        <p class="issuer">Certified Compensation Bill
+          <small>Freigeld · after Wörgl, Tyrol, 1932</small>
+        </p>
+        <div class="denom" id="denom">
+          Demurrage —<br>
+          Commons —
+        </div>
+      </div>
+
+      <p class="amount" id="amount">—<span class="unit">FREI</span></p>
+      <p class="shrink" id="shrink">Connect a wallet to see your note.</p>
+
+      <p class="stamps-lab" id="stampsLab"></p>
+      <div class="stamps" id="stamps"></div>
+
+      <dl class="facts">
+        <div><dt>Costs you daily</dt><dd id="perDay">—</dd></div>
+        <div><dt>Half gone in</dt><dd id="halve">—</dd></div>
+        <div><dt>Idle</dt><dd id="idle">—</dd></div>
+      </dl>
+
+      <div class="serial">
+        <span id="serialL">In circulation —</span>
+        <span id="serialR">Collected by the commons —</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Your note</h2>
+    <p class="how">Nothing loops over holders — the charge is worked out only when a balance is touched, exactly as the stamp was bought at the moment of use.</p>
+    <button id="connectBtn">Connect wallet</button>
+    <p class="why" id="mainWhy"></p>
+  </section>
+
+  <section class="panel hidden" id="sendPanel">
+    <h2>Spend it</h2>
+    <p class="how">Sending settles both ends: you pay for the time you sat on it, and their clock starts fresh.</p>
+    <label for="toAddr">To</label>
+    <input id="toAddr" placeholder="0x…" autocomplete="off">
+    <label for="amt">Amount (FREI)</label>
+    <input id="amt" placeholder="25.00" inputmode="decimal" autocomplete="off">
+    <p class="quote" id="sendQuote">Enter an amount.</p>
+    <button id="sendBtn" disabled>Send</button>
+    <p class="why" id="sendWhy"></p>
+  </section>
+
+  <section class="panel hidden" id="settlePanel">
+    <h2>Buy the stamp</h2>
+    <p class="how">Settling writes down what's already true and pays the commons. It changes nothing about what you have — every view here already shows the decayed figure — but it clears the stamps and restarts the clock.</p>
+    <button id="settleBtn" class="ghost">Settle my note</button>
+    <p class="why" id="settleWhy">Anyone may settle anyone's note. It takes nothing that hadn't already been lost, and the proceeds can only go to the commons.</p>
+  </section>
+
+  <section class="panel hidden" id="issuePanel">
+    <h2>Issue <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line);padding:3px 7px">Issuer</span></h2>
+    <p class="how">Visible because you deployed it. Putting new notes into circulation, up to the cap fixed at deploy.</p>
+    <div class="two">
+      <div>
+        <label for="isTo">To</label>
+        <input id="isTo" placeholder="0x…" autocomplete="off">
+      </div>
+      <div>
+        <label for="isAmt">Amount</label>
+        <input id="isAmt" placeholder="1000" inputmode="decimal" autocomplete="off">
+      </div>
+    </div>
+    <div class="two">
+      <button id="issueBtn">Issue</button>
+      <button id="closeBtn" class="ghost">Close issuance for good</button>
+    </div>
+    <p class="why" id="issueWhy"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Look at another note</h2>
+    <input id="lookup" placeholder="0x…" autocomplete="off">
+    <button class="ghost" id="lookupBtn">Read it</button>
+    <p class="why" id="lookupWhy"></p>
+  </section>
+
+  <p class="foot">
+    Contract <code id="addrOut">—</code> · <a href="./freigeld-guide.html">what is this?</a> · <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">read the source</a><br>
+    Testnet · unaudited · designed to lose value — not an investment, and never was
+  </p>
+  <div class="hist">
+    Wörgl issued these in July 1932 at <b>1% a month</b>. Holders passed them on nine to ten times faster than the national schilling; the town paved roads and built a bridge while unemployment fell 16% against a 19% rise across Austria. Austria's central bank shut it down in 1933. American towns copied it at <b>2% a week</b> — and the money was simply refused.
+  </div>
+</div>
+
+<script>
+const NETWORKS={
+  testnet:{ label:"Arc Testnet", chainId:5042002,
+    rpcs:["https://rpc.blockdaemon.testnet.arc.network","https://arc-testnet.drpc.org","https://rpc.quicknode.testnet.arc.network","https://5042002.rpc.thirdweb.com","https://rpc.testnet.arc.network","https://rpc.testnet.arc.io"],
+    explorer:"https://testnet.arcscan.app",
+    token:"0xdf7F6BC2F2A3F27798Bc80096A5799c862dF8f24" },
+  mainnet:{ label:"Arc", chainId:0, rpcs:[], explorer:"", token:"" }
+};
+const ACTIVE="testnet";
+const NET=NETWORKS[new URLSearchParams(location.search).get("net")]||NETWORKS[ACTIVE];
+const TK=NET.token, RPCS=NET.rpcs||[], CHAIN=NET.chainId, EXPLORER=NET.explorer;
+const DEC=6n;
+
+const ABI=[
+  "function balanceOf(address) view returns (uint256)",
+  "function pendingDemurrage(address) view returns (uint256)",
+  "function snapshot(address) view returns (tuple(uint256 balance,uint256 stored,uint256 pending,uint64 lastTouched,uint64 idleSeconds,uint256 perDayCost,uint256 daysToHalve))",
+  "function rates() view returns (uint16 perPeriodBps,uint256 perYearBps,uint32 periodSeconds)",
+  "function totalSupply() view returns (uint256)",
+  "function collected() view returns (uint256)",
+  "function commons() view returns (address)",
+  "function issuer() view returns (address)",
+  "function rateBps() view returns (uint16)",
+  "function PERIOD() view returns (uint32)",
+  "function issuanceClosed() view returns (bool)",
+  "function issued() view returns (uint256)",
+  "function issueCap() view returns (uint256)",
+  "function transfer(address,uint256) returns (bool)",
+  "function settle(address)",
+  "function issue(address,uint256)",
+  "function closeIssuance()",
+  "error ZeroAddress()","error ZeroAmount()","error RateTooHigh(uint16 asked,uint16 max)",
+  "error InsufficientBalance(uint256 have,uint256 want)",
+  "error InsufficientAllowance(uint256 have,uint256 want)",
+  "error NotIssuer()","error IssuanceClosed()","error AboveCap(uint256 attempted,uint256 cap)"
+];
+const IFACE=new ethers.Interface(ABI);
+const ARC={chainId:"0x"+CHAIN.toString(16),chainName:NET.label,
+  nativeCurrency:{name:"USDC",symbol:"USDC",decimals:18},rpcUrls:RPCS,blockExplorerUrls:[EXPLORER]};
+
+const $=id=>document.getElementById(id);
+const f=v=>Number(ethers.formatUnits(v,DEC)).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const p6=s=>ethers.parseUnits(s,DEC);
+const shortA=a=>a.slice(0,6)+"…"+a.slice(-4);
+
+const pool=RPCS.map(u=>new ethers.JsonRpcProvider(u));
+let wp=null;
+const readers=()=>wp?[wp,...pool]:pool;
+async function rd(fn){ let e; for(const p of readers()){ try{ return await fn(new ethers.Contract(TK,ABI,p)); }catch(x){e=x;} } throw e; }
+
+let signer=null,me=null,viewing=null,snap=null,cfg=null,raf=null,loadToken=0;
+
+$("addrOut").textContent=TK||"not deployed";
+$("net").textContent=NET.label;
+
+/* ---------------- config, read once ---------------- */
+async function loadConfig(){
+  try{
+    const [r,c,iss,sup,col,closed] = await Promise.all([
+      rd(x=>x.rates()), rd(x=>x.commons()), rd(x=>x.issuer()),
+      rd(x=>x.totalSupply()), rd(x=>x.collected()), rd(x=>x.issuanceClosed())
+    ]);
+    cfg={ rateBps:Number(r[0]), perYearBps:Number(r[1]), period:Number(r[2]),
+          commons:c, issuer:iss, supply:sup, collected:col, closed };
+    $("denom").innerHTML =
+      "Demurrage "+(cfg.rateBps/100).toFixed(2)+"% per 30 days<br>"+
+      "≈ "+(cfg.perYearBps/100).toFixed(1)+"% a year, compounded";
+    $("serialL").textContent="In circulation "+f(cfg.supply)+" FREI";
+    $("serialR").textContent="Collected by the commons "+f(cfg.collected);
+  }catch(e){ console.error(e); }
+}
+
+/* ---------------- the note ----------------
+   The balance ticks down between blocks using the same formula the
+   contract uses, so the figure on screen is never higher than what
+   the chain would pay out. */
+function decayNow(stored, lastTouched, atMs){
+  if(!cfg || stored===0n || lastTouched===0) return {net:stored, lost:0n};
+  const elapsed=Math.max(0, atMs/1000 - lastTouched);
+  const P=cfg.period, r=cfg.rateBps;
+  let periods=Math.floor(elapsed/P); const rem=elapsed%P;
+  if(periods>240) periods=240;
+  let v=stored;
+  for(let i=0;i<periods;i++){ v=(v*BigInt(10000-r))/10000n; if(v===0n) break; }
+  if(v>0n && rem>0){
+    const rt=(BigInt(r)*BigInt(Math.floor(rem)))/BigInt(P);
+    const corr=(BigInt(r)*rt*BigInt(P-Math.floor(rem)))/(2n*10000n*BigInt(P));
+    const eff = rt>corr ? rt-corr : rt;
+    const part=(v*eff)/10000n;
+    v = v>part ? v-part : 0n;
+  }
+  return {net:v, lost:stored-v};
+}
+
+function tick(){
+  if(!snap||!cfg){ raf=null; return; }
+  const {net}=decayNow(snap.stored, snap.lastTouched, Date.now());
+  const whole=net/1000000n, frac=String(net%1000000n).padStart(6,"0");
+  $("amount").innerHTML = Number(whole).toLocaleString("en-US")+
+    '<span class="frac">.'+frac+'</span><span class="unit">FREI</span>';
+  raf=requestAnimationFrame(tick);
+}
+
+function renderStamps(){
+  const idle = snap.lastTouched===0 ? 0 : Math.max(0, Date.now()/1000 - snap.lastTouched);
+  const full = Math.floor(idle/cfg.period);
+  const part = (idle%cfg.period)/cfg.period;
+  const show = Math.min(full, 24);
+
+  let s="";
+  for(let i=0;i<show;i++){
+    s+='<div class="stamp"><span>30 D</span><b>'+(cfg.rateBps/100).toFixed(0)+'%</b><span>DUE</span></div>';
+  }
+  if(full<=24 && part>0.02 && snap.stored>0n){
+    s+='<div class="stamp partial"><span>PART</span><b>'+(part*100).toFixed(0)+'%</b><span>OF 30D</span></div>';
+  }
+  $("stamps").innerHTML=s;
+  $("stampsLab").textContent = snap.stored===0n ? ""
+    : full===0 ? "No full period yet — the charge is accruing"
+    : full>24 ? full+" periods owed (showing 24)"
+    : full+" stamp"+(full===1?"":"s")+" owed — one for every 30 days this note sat still";
+}
+
+async function load(who){
+  if(!who||!cfg) return;
+  const token=++loadToken;
+  viewing=who;
+  try{
+    const s=await rd(x=>x.snapshot(who));
+    if(token!==loadToken) return;
+    snap={ balance:s[0], stored:s[1], pending:s[2], lastTouched:Number(s[3]),
+           idle:Number(s[4]), perDay:s[5], halveDays:Number(s[6]) };
+    render();
+    if(!raf) raf=requestAnimationFrame(tick);
+  }catch(e){ console.error(e); }
+}
+
+function render(){
+  const isMe = me && viewing.toLowerCase()===me.toLowerCase();
+  const isCommons = cfg && viewing.toLowerCase()===cfg.commons.toLowerCase();
+
+  $("perDay").textContent = f(snap.perDay);
+  $("halve").textContent = snap.halveDays>0 ? Math.round(snap.halveDays/30)+" months" : "—";
+  const d=Math.floor(snap.idle/86400), h=Math.floor(snap.idle%86400/3600);
+  $("idle").textContent = snap.lastTouched===0 ? "never held" : (d>0? d+"d "+h+"h" : h+"h");
+
+  renderStamps();
+
+  if(snap.stored===0n){
+    $("shrink").className="shrink none";
+    $("shrink").textContent = isMe ? "This note is empty. Nothing to lose, nothing to spend."
+      : shortA(viewing)+" holds none.";
+  } else {
+    $("shrink").className="shrink";
+    $("shrink").innerHTML = (isMe?"You've":"They've")+" lost <b>"+f(snap.pending)+" FREI</b> to the commons since this note was last touched"+
+      (isCommons?" — though the commons pays no demurrage to itself":"")+".";
+  }
+
+  $("sendPanel").classList.toggle("hidden", !(isMe && snap.stored>0n));
+  $("settlePanel").classList.toggle("hidden", !me);
+  $("mainWhy").className="why";
+  if(!me) $("mainWhy").textContent="";
+  else if(!isMe) $("mainWhy").textContent="Reading "+shortA(viewing)+"'s note. Connect is yours — this one you can only look at, or settle on their behalf.";
+  else if(snap.stored===0n) $("mainWhy").textContent="Nobody has issued you any yet.";
+  else $("mainWhy").textContent="Every day you hold this costs you about "+f(snap.perDay)+" FREI. Spending is free.";
+  quoteSend();
+}
+
+$("lookupBtn").onclick=()=>{
+  const v=$("lookup").value.trim();
+  if(!ethers.isAddress(v)){ $("lookupWhy").textContent="That isn't a valid address."; $("lookupWhy").className="why warn"; return; }
+  $("lookupWhy").textContent=""; load(v);
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+
+function quoteSend(){
+  if(!snap) return;
+  const v=$("amt").value.trim();
+  if(!v||isNaN(v)||Number(v)<=0){ $("sendQuote").textContent="Enter an amount."; $("sendBtn").disabled=true; return; }
+  let a; try{ a=p6(v); }catch{ return; }
+  const {net}=decayNow(snap.stored, snap.lastTouched, Date.now());
+  if(a>net){
+    $("sendQuote").innerHTML="Your note is worth <b>"+f(net)+" FREI</b> right now — less than that.";
+    $("sendBtn").disabled=true; return;
+  }
+  $("sendQuote").innerHTML="Sending settles first: <b>"+f(snap.pending)+
+    " FREI</b> goes to the commons, then <b>"+f(a)+"</b> to them. Their clock restarts from zero.";
+  $("sendBtn").disabled=false;
+}
+$("amt").addEventListener("input",quoteSend);
+
+/* ---------------- connect ---------------- */
+(async function boot(){
+  await loadConfig();
+  if(!window.ethereum) return;
+  try{ const a=await window.ethereum.request({method:"eth_accounts"}); if(a&&a.length) await connect(true); }catch(_){}
+})();
+$("connectBtn").onclick=()=>connect(false);
+
+async function connect(silent){
+  if(!window.ethereum){
+    if(!silent){ $("mainWhy").textContent="No wallet in this browser."; $("mainWhy").className="why warn"; }
+    return;
+  }
+  try{
+    if(!silent) await window.ethereum.request({method:"eth_requestAccounts"});
+    const n=await window.ethereum.request({method:"eth_chainId"});
+    if(parseInt(n,16)!==CHAIN){
+      try{ await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:ARC.chainId}]}); }
+      catch(e){ if(e.code===4902) await window.ethereum.request({method:"wallet_addEthereumChain",params:[ARC]}); else throw e; }
+    }
+    const bp=new ethers.BrowserProvider(window.ethereum);
+    wp=bp; signer=await bp.getSigner(); me=await signer.getAddress();
+    $("connectBtn").textContent=shortA(me)+" connected";
+    $("connectBtn").disabled=true;
+    if(!cfg) await loadConfig();
+    if(cfg && cfg.issuer.toLowerCase()===me.toLowerCase()) $("issuePanel").classList.remove("hidden");
+    await load(me);
+  }catch(e){
+    if(!silent){ $("mainWhy").textContent="Wallet didn't connect: "+(e.shortMessage||e.message); $("mainWhy").className="why warn"; }
+  }
+}
+
+/* ---------------- write ---------------- */
+const ERRS={
+  ZeroAddress:"That address isn't valid.",
+  ZeroAmount:"Amount can't be zero.",
+  InsufficientBalance:"Your note isn't worth that much any more.",
+  InsufficientAllowance:"Not approved for that much.",
+  NotIssuer:"Only the issuer can do that.",
+  IssuanceClosed:"Issuance was closed for good.",
+  AboveCap:"That would go past the issue cap set at deploy.",
+  RateTooHigh:"Above the rate ceiling."
+};
+function why(e){
+  const m=e.shortMessage||e.message||"";
+  if(m.includes("rejected")||e?.code==="ACTION_REJECTED") return "You rejected the signature. Nothing moved.";
+  let r=e?.revert;
+  if(!r){ const d=e?.data||e?.info?.error?.data||e?.error?.data;
+    if(typeof d==="string"){ try{ r=IFACE.parseError(d); }catch(_){} } }
+  if(r&&ERRS[r.name]){
+    if(r.name==="InsufficientBalance"&&r.args) return "Your note is worth "+f(r.args[0])+" FREI right now — less than "+f(r.args[1])+".";
+    if(r.name==="AboveCap"&&r.args) return "The cap is "+f(r.args[1])+" FREI and that would reach "+f(r.args[0])+".";
+    return ERRS[r.name];
+  }
+  if(r) return "Reverted: "+r.name;
+  return "Failed: "+m;
+}
+
+$("sendBtn").onclick=async()=>{
+  const b=$("sendBtn"); b.disabled=true; b.textContent="Confirm…";
+  try{
+    const to=$("toAddr").value.trim();
+    if(!ethers.isAddress(to)) throw new Error("That recipient address isn't valid");
+    const a=p6($("amt").value.trim());
+    const c=new ethers.Contract(TK,ABI,signer);
+    await (await c.transfer(to,a)).wait();
+    $("amt").value="";
+    await loadConfig(); await load(me);
+    $("sendWhy").textContent="Sent. Their note starts fresh; yours restarts too."; $("sendWhy").className="why ok";
+  }catch(e){ $("sendWhy").textContent=why(e); $("sendWhy").className="why warn"; }
+  finally{ b.disabled=false; b.textContent="Send"; }
+};
+
+$("settleBtn").onclick=async()=>{
+  const b=$("settleBtn"); b.disabled=true; b.textContent="Confirm…";
+  try{
+    const c=new ethers.Contract(TK,ABI,signer);
+    await (await c.settle(viewing||me)).wait();
+    await loadConfig(); await load(viewing||me);
+    $("settleWhy").textContent="Settled. The stamps are cleared and the commons has been paid."; $("settleWhy").className="why ok";
+  }catch(e){ $("settleWhy").textContent=why(e); $("settleWhy").className="why warn"; }
+  finally{ b.disabled=false; b.textContent="Settle my note"; }
+};
+
+$("issueBtn").onclick=async()=>{
+  const b=$("issueBtn"); b.disabled=true; b.textContent="Confirm…";
+  try{
+    const to=$("isTo").value.trim()||me;
+    if(!ethers.isAddress(to)) throw new Error("That address isn't valid");
+    const a=p6($("isAmt").value.trim()||"0");
+    const c=new ethers.Contract(TK,ABI,signer);
+    await (await c.issue(to,a)).wait();
+    $("isAmt").value="";
+    await loadConfig(); await load(viewing||me);
+    $("issueWhy").textContent="Issued. It starts decaying the moment it lands."; $("issueWhy").className="why ok";
+  }catch(e){ $("issueWhy").textContent=why(e); $("issueWhy").className="why warn"; }
+  finally{ b.disabled=false; b.textContent="Issue"; }
+};
+
+let armClose=false;
+$("closeBtn").onclick=async()=>{
+  const b=$("closeBtn");
+  if(!armClose){
+    armClose=true; b.textContent="Confirm — close forever?";
+    $("issueWhy").textContent="Closing issuance is permanent. No further notes can ever be created, by you or anyone. Click again to confirm.";
+    $("issueWhy").className="why warn";
+    setTimeout(()=>{ if(armClose){ armClose=false; b.textContent="Close issuance for good"; } },6000);
+    return;
+  }
+  armClose=false; b.disabled=true; b.textContent="Confirm…";
+  try{
+    const c=new ethers.Contract(TK,ABI,signer);
+    await (await c.closeIssuance()).wait();
+    await loadConfig();
+    $("issueWhy").textContent="Issuance closed. The supply is what it is."; $("issueWhy").className="why ok";
+  }catch(e){ $("issueWhy").textContent=why(e); $("issueWhy").className="why warn"; b.disabled=false; }
+};
+</script>
+</body>
+</html>

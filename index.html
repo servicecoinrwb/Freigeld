@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Freigeld is</title>
+<meta name="description" content="A token whose balances decay when held — Silvio Gesell's demurrage, and the Austrian town that proved it worked before it was banned.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:ital,wght@0,400;0,600;0,700;1,400&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#1d2420; --felt-2:#252e29; --paper:#e7dfc6;
+    --engrave:#3d6152; --stamp:#a33b30; --gold:#9a7b3f;
+    --dim:rgba(231,223,198,.66); --faint:rgba(231,223,198,.36);
+    --line:rgba(231,223,198,.13);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--felt);
+    background-image:radial-gradient(900px 420px at 50% -8%,rgba(61,97,82,.2),transparent 62%);
+    color:var(--paper);font-family:"Public Sans",system-ui,sans-serif;
+    font-size:16px;line-height:1.68;padding:26px 16px 80px;display:flex;justify-content:center}
+  .shell{width:100%;max-width:660px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:34px;flex-wrap:wrap}
+  .mark{font-family:"Zilla Slab",serif;font-weight:700;font-size:25px;letter-spacing:-.01em}
+  .mark i{font-style:italic;color:var(--gold)}
+  .back{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--gold);text-decoration:none;border:1px solid rgba(154,123,63,.45);padding:6px 13px}
+  .back:hover{background:rgba(154,123,63,.09)}
+
+  h1{font-family:"Zilla Slab",serif;font-weight:700;font-size:clamp(30px,7vw,43px);line-height:1.09;
+    letter-spacing:-.02em;margin:0 0 16px}
+  h1 i{font-style:italic;color:var(--gold)}
+  .lede{font-size:17px;color:var(--dim);margin:0 0 10px;max-width:57ch}
+
+  h2{font-family:"Zilla Slab",serif;font-weight:600;font-size:25px;margin:46px 0 12px;letter-spacing:-.01em}
+  h3{font-family:"Zilla Slab",serif;font-weight:600;font-size:19px;margin:0 0 6px}
+  p{color:var(--dim);margin:0 0 14px;max-width:62ch}
+  b{color:var(--paper);font-weight:600}
+
+  /* decay curve */
+  .curve{background:var(--felt-2);border:1px solid var(--line);padding:20px;margin:22px 0 10px}
+  .curve-lab{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--faint);margin:0 0 16px}
+  .bars{display:flex;align-items:flex-end;gap:5px;height:120px}
+  .bars div{flex:1;background:var(--engrave);position:relative;border-radius:2px 2px 0 0;min-width:0}
+  .bars div span{position:absolute;top:-17px;left:0;right:0;text-align:center;
+    font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--faint)}
+  .bars div i{position:absolute;bottom:-19px;left:0;right:0;text-align:center;font-style:normal;
+    font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--faint)}
+  .curve p{font-size:13.5px;margin:34px 0 0}
+
+  .case{background:var(--felt-2);border:1px solid var(--line);padding:19px;margin:0 0 12px}
+  .case p{font-size:14.5px;margin:0 0 10px}
+  .case p:last-child{margin:0}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0 18px;font-size:14.5px}
+  th,td{text-align:left;padding:11px 0;border-bottom:1px solid var(--line);color:var(--dim);vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--faint);font-weight:400}
+  td:first-child{color:var(--paper);width:36%;padding-right:16px}
+
+  .plain{border-left:2px solid var(--stamp);padding:2px 0 2px 16px;margin:20px 0}
+  .plain p{font-size:15px;color:var(--dim)}
+  .plain p:last-child{margin:0}
+
+  .cta{display:inline-block;background:var(--engrave);color:var(--paper);font-weight:600;font-size:15px;
+    text-decoration:none;padding:13px 22px;margin-top:10px}
+  .cta:hover{filter:brightness(1.18)}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.85;color:var(--faint);text-align:center}
+  footer a{color:var(--gold)}
+  a{color:var(--gold)}
+  @media (max-width:520px){ table,tbody,tr,td,th{display:block} th{display:none}
+    tr{border-bottom:1px solid var(--line);padding:10px 0} td{border:0;padding:2px 0;width:auto}
+    td:first-child{color:var(--paper);font-weight:600} }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="mark">Frei<i>geld</i></div>
+    <a class="back" href="./freigeld.html">Open the app</a>
+  </div>
+
+  <h1>Bread goes stale. Steel rusts. <i>Money just sits there.</i></h1>
+  <p class="lede">Silvio Gesell's argument in 1916 was that this asymmetry is the whole problem. Everything real decays, so anyone holding goods is under pressure to trade. Money doesn't decay, so whoever holds it can simply wait — and in a downturn, waiting is exactly what everyone does at once.</p>
+  <p class="lede">His fix was blunt: <b>make money rot too.</b></p>
+
+  <h2>What it does to a balance</h2>
+  <p>At 1% a month — the rate that has actually been tried — a hundred units left alone look like this.</p>
+
+  <div class="curve">
+    <p class="curve-lab">100 FREI, untouched, at 1% per 30 days</p>
+    <div class="bars">
+      <div style="height:100%"><span>100</span><i>now</i></div>
+      <div style="height:97%"><span>97.0</span><i>3mo</i></div>
+      <div style="height:94.1%"><span>94.1</span><i>6mo</i></div>
+      <div style="height:88.6%"><span>88.6</span><i>1yr</i></div>
+      <div style="height:78.6%"><span>78.6</span><i>2yr</i></div>
+      <div style="height:54.7%"><span>54.7</span><i>5yr</i></div>
+      <div style="height:29.9%"><span>29.9</span><i>10yr</i></div>
+    </div>
+    <p>It never quite reaches zero — a charge, not a confiscation. Half of it is gone in a bit under six years. Spend it and the charge stops; the clock restarts for whoever you gave it to.</p>
+  </div>
+
+  <h2>It was tried, it worked, and it was banned</h2>
+  <div class="case">
+    <p>In July 1932 the Austrian town of Wörgl was dying. Of 4,200 people, around 1,500 had no work, the cement plant had closed, and the town was too broke to fix its roads.</p>
+    <p>The mayor, a former railway worker named Michael Unterguggenberger, issued "Certified Compensation Bills" that lost <b>1% of face value every month</b>. To keep a note current you bought a stamp and stuck it on the back. Nobody wanted to be holding one at month's end.</p>
+    <p>The scrip changed hands <b>nine to ten times faster</b> than the national schilling. The town paved streets, built a bridge and a ski jump. Unemployment in Wörgl fell 16% while it rose 19% across Austria. Irving Fisher and Keynes both took an interest, and roughly two hundred other towns queued up to copy it.</p>
+    <p>Austria's central bank shut it down in 1933, on the grounds that issuing currency is the state's business alone.</p>
+  </div>
+
+  <h2>The part that matters more than the success</h2>
+  <p>American towns copied the idea during the Depression and several set the decay far higher — around <b>2% a week</b>. At that rate the money was simply refused. People wouldn't take it, so it stopped being money at all.</p>
+  <p>That failure is the more useful data point, and it's why this contract has a hard ceiling of 5% per period written in as a constant nobody can change, including whoever deployed it. Demurrage has a working range, and outside it the currency dies.</p>
+
+  <h2>How the charge is collected</h2>
+  <table>
+    <tr><th>The obvious way</th><th>What's done instead</th></tr>
+    <tr><td>Loop over every holder and dock them</td><td>Costs more gas than it collects, and gets worse as the token succeeds.</td></tr>
+    <tr><td>Rebase everyone's balance nightly</td><td>Needs a keeper. When the keeper dies, the currency quietly stops working.</td></tr>
+    <tr><td>Charge at the moment of touch</td><td>Each balance carries its own clock. The decay is computed when someone interacts with it — which is exactly how the stamp worked in 1932.</td></tr>
+  </table>
+  <p>An untouched balance is <i>already</i> smaller in every view the contract offers. Settling doesn't take anything from you — it just writes down what was true anyway, and pays the commons.</p>
+
+  <h2>Where the decay goes</h2>
+  <p>In Wörgl the stamp money went to the town and paid for roadworks. Here it goes to a <b>commons address fixed at deployment</b>, which can never be changed — not by the issuer, not by anyone. A commons someone can redirect later isn't a commons.</p>
+  <p>Anyone can settle anyone's balance. That sounds like an attack until you notice it can only take what was already lost and can only send it to that one fixed address. It means an abandoned wallet still funds the commons instead of sitting in limbo.</p>
+
+  <h2>Why nobody ships this</h2>
+  <div class="case">
+    <p>Because holders hate it, and holders are who you're selling to. Every token launch is implicitly a pitch that the number will go up if you sit still. This is the opposite pitch, and it's a bad one — which is precisely what makes it worth building once.</p>
+    <p>It's also worth saying that the Wörgl result is contested. Sceptics point out that the town was simultaneously spending on public works, that some notes were hoarded anyway as collectibles, and that a fourteen-month experiment in a town of four thousand proves less than its advocates claim. It's a striking piece of history, not a settled economic result.</p>
+  </div>
+
+  <h2>What you should not do with it</h2>
+  <div class="plain">
+    <p><b>Don't hold it.</b> Not a warning — a description. This is engineered to lose value in your hands and it will do exactly that.</p>
+    <p><b>It is not an investment.</b> There's no scenario where the number goes up. Anyone framing it as one has misread the entire premise.</p>
+    <p><b>Rounding always favours the contract.</b> Integer division floors, so a very small balance can decay to nothing. Dust behaves like dust.</p>
+    <p><b>Issuance is one-way when closed.</b> Once the issuer calls it, no further units can exist, ever.</p>
+    <p><b>Unaudited, on a testnet.</b> The decay math is checked against a simulation covering the historical rate, the ceiling, part-periods and 5,000 randomized balances with nothing created or destroyed. That isn't a professional review.</p>
+  </div>
+
+  <h2>Try it</h2>
+  <p>Hold some and watch the number fall in real time. That's the whole demonstration, and it takes about ten seconds to feel wrong.</p>
+  <a class="cta" href="./freigeld.html">Open the app →</a>
+
+  <footer>
+    Freigeld · Arc Testnet, chain 5042002<br>
+    Contract <a href="https://testnet.arcscan.app/address/0xdf7F6BC2F2A3F27798Bc80096A5799c862dF8f24" target="_blank" rel="noopener">0xdf7F…8f24</a> — rate and commons fixed at deploy, changeable by nobody.
+  </footer>
+</div>
+</body>
+</html>
